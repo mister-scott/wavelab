@@ -81,7 +81,7 @@ class WaveformGenerator:
         
         # Phase adjusted time array
         t_phase = w * t + self.phase_shift
-        
+    
         if self.signal_type == 'sin':
             wave = np.sin(t_phase)
         elif self.signal_type == 'square':
@@ -136,9 +136,9 @@ class WaveformGenerator:
             
         return combined_signal
 
-    def get_waveform(self, sample_rate, duration, bit_depth=None, 
+    def get_waveform(self, sample_rate, duration=0, bit_depth=None, 
                      phase_shift_type='radians', phase_shift_value=None,
-                     combine_composite=True):
+                     combine_composite=True, duration_type=None, force=False):
         """
         Generate waveform samples
         
@@ -156,14 +156,31 @@ class WaveformGenerator:
             Additional phase shift value in specified units
         combine_composite : bool
             Whether to include composite signals in the output
-            
+        duration_type : str
+            Selects  method of durations calculation. 
+            Can be 'time' (default), 'samples', or 'cycles'.
+        force: bool
+            Overrides length limitations
         Returns:
         --------
         tuple : (time_array, signal_array)
             Arrays containing time points and corresponding signal values
         """
+        # Sample soft limit
+        soft_limit = int(1e5)
+
         # Generate time array
-        num_samples = int(sample_rate * duration)
+        if duration_type in [None,'time']:
+            num_samples = int(sample_rate * duration)
+        elif duration_type == 'samples':
+            num_samples = duration
+            duration = num_samples / sample_rate
+            num_samples = int(num_samples)
+        elif duration_type == 'cycles':
+            duration = duration * 1/self.frequency
+            num_samples = int(sample_rate * duration)
+        if num_samples > soft_limit:
+            raise ValueError(f"The requested waveform would generate {num_samples} samples (soft cap of {soft_limit}). Pass 'force=True' to get the data anyways.")
         t = np.linspace(0, duration, num_samples, endpoint=False)
         
         # Apply additional phase shift if specified
